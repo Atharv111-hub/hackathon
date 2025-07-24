@@ -1,94 +1,47 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.secret_key = 'supersecretkey'  # Needed for flashing messages
 
-# Dummy user storage
-users = {'admin@example.com': 'admin123'}
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'txt', 'png', 'jpg', 'jpeg', 'mp4', 'mov', 'avi'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Home/Login/Signup Routes
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 @app.route('/')
-def home():
-    return render_template('index.html')
+def index():
+    return render_template('index.html')  # homepage
 
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        if email in users and users[email] == password:
-            return redirect(url_for('dashboard'))
-        else:
-            return render_template('login.html', message='Invalid credentials')
-    return render_template('login.html')
-
-@app.route('/signup', methods=['POST'])
-def signup():
-    email = request.form['email']
-    password = request.form['password']
-    if email in users:
-        return render_template('login.html', message='User already exists')
-    users[email] = password
-    return redirect(url_for('dashboard'))
-
-
-# Dashboard Page
-@app.route('/dashboard')
-def dashboard():
-    return render_template('dashboard.html')
-
-# Upload Page
-@app.route('/upload')
+@app.route('/upload', methods=['GET', 'POST'])
 def upload():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file part')
+            return redirect(request.url)
+        file = request.files['file']
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            # Placeholder for processing logic
+            flash(f'File "{filename}" uploaded successfully! (fake news check pending)')
+            return redirect(request.url)
+        else:
+            flash('File type not allowed.')
+            return redirect(request.url)
     return render_template('upload.html')
 
-# Analyze Explanation Page
-@app.route('/analyze-info')
-def analyze_info():
-    return render_template('analyze-info.html')
 
-# Result Explanation Page
-@app.route('/result-info')
-def result_info():
-    return render_template('result-info.html')
-
-# Feedback Page
-@app.route('/feedback', methods=['GET', 'POST'])
-def feedback():
-    if request.method == 'POST':
-        name = request.form['name']
-        feedback_text = request.form['feedback']
-        print(f"Feedback from {name}: {feedback_text}")  # Optionally save to DB or file
-        return f"Thank you for your feedback, {name}!"
-    return render_template('feedback.html')
-@app.route('/about')
-def about():
-    return render_template('about.html')
-# === AI Model Result Routes ===
-
-@app.route('/predict_news', methods=['POST'])
-def predict_news():
-    news_text = request.form['news_text']
-    region = request.form.get('region')
-
-    # Dummy AI logic (replace with BERT)
-    prediction = "Fake"
-    confidence = 91.6
-    explanation = "Detected known misinformation pattern."
-
-    return render_template("result.html", prediction=prediction, confidence=confidence, explanation=explanation, source='news')
-
-@app.route('/predict_deepfake', methods=['POST'])
-def predict_deepfake():
-    media = request.files['media']
-
-    # Dummy AI logic (replace with XceptionNet)
-    prediction = "Real"
-    confidence = 88.4
-    explanation = "No manipulation detected in face region."
-
-    return render_template("result.html", prediction=prediction, confidence=confidence, explanation=explanation, source='deepfake')
-
-# Run the app
 if __name__ == '__main__':
     app.run(debug=True)
