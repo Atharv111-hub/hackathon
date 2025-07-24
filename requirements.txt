@@ -1,0 +1,16 @@
+flask
+Flask==2.3.3
+flask-login
+flask-pymongo
+flask-wtf
+tensorflow
+transformers
+scikit-learn
+opencv-python
+numpy
+matplotlib
+shap
+gunicorn
+twilio
+pillow
+python-dotenv
